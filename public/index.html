@@ -1,26 +1,36 @@
 <html>
   <head>
     <title>Fusion Data Explorer</title>
-    <link href="https://unpkg.com/graphiql@1.10.0/graphiql.min.css" rel="stylesheet" />
+    <link
+      href="https://unpkg.com/graphiql@1.10.0/graphiql.min.css"
+      rel="stylesheet"
+    />
   </head>
-  <div id="warningBanner" style="
-  padding: 10px;
-  background: #fffdcd;
-  height: 13px;
-"><img src="warning.png" style="
-  width: 15px;
-  position: absolute;
-  left: 15px;
-"><p style="
-  line-height: 100%;
-  font-family: sans-serif;
-  font-size: 83%;
-  margin: 0;
-  margin-left: 30px;
-  color: #5d5d5d;
-">Please note that this tool will allow you to <strong>READ</strong> and <strong>WRITE</strong> to your production Fusion Data</p></div>
-  <body style="margin: 0;">
-    <div id="graphiql" style="height: calc(100vh - 33px);">
+
+  <body style="margin: 0">
+    <div
+      id="warningBanner"
+      style="padding: 10px; background: #fffdcd; height: 13px"
+    >
+      <img
+        src="warning.png"
+        style="width: 15px; position: absolute; left: 15px"
+      />
+      <p
+        style="
+          line-height: 100%;
+          font-family: sans-serif;
+          font-size: 83%;
+          margin: 0;
+          margin-left: 30px;
+          color: #5d5d5d;
+        "
+      >
+        Please note that this tool will allow you to <strong>READ</strong> and
+        <strong>WRITE</strong> to your production Fusion Data
+      </p>
+    </div>
+    <div id="graphiql" style="height: calc(100vh - 33px)">
       Authenticating...
     </div>
 
@@ -40,10 +50,16 @@
     <script>
       window.addEventListener("load", async () => {
         try {
-          let res = await fetch("/oauth/token");
-          if (!res.ok) throw "No access token";
+          let url = new URL(window.location.href);
+          let accessToken = url.searchParams.get("access_token");
 
-          let accessToken = await res.text();
+          if (!accessToken) {
+            let res = await fetch(`/oauth/token`);
+            if (!res.ok) throw "No access token";
+
+            accessToken = await res.text();
+          }
+
           let defaultQuery = `# Welcome to the Fusion Data GraphiQL Explorer
 #
 # GraphiQL is an in-browser tool for writing, validating, and
@@ -95,9 +111,9 @@ query {
                 headers: {
                   "Content-Type": "application/json",
                   Authorization: "Bearer " + accessToken,
-                  ...headers
+                  ...headers,
                 },
-                body: JSON.stringify(graphQLParams)
+                body: JSON.stringify(graphQLParams),
               }
             ).then((response) => response.json());
           }
@@ -106,13 +122,20 @@ query {
             React.createElement(GraphiQL, {
               fetcher: graphQLFetcher,
               query: defaultQuery,
-              defaultQuery: { defaultQuery }
+              defaultQuery: { defaultQuery },
             }),
             document.getElementById("graphiql")
           );
         } catch {
-          let res = await fetch("/oauth/url");
-          let url = await res.text();
+          let params = "";
+          let url = new URL(window.location.href);
+          let clientId = url.searchParams.get("client_id");
+          let clientSecret = url.searchParams.get("client_secret");
+          if (clientId && clientSecret) {
+            params = `?client_id=${clientId}&client_secret=${clientSecret}`;
+          }
+          let res = await fetch("/oauth/url" + params);
+          url = await res.text();
           location.href = url;
         }
       });

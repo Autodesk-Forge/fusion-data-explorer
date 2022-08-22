@@ -22,17 +22,23 @@ let callbackUrl =
   process.env.FORGE_CALLBACK_URL || `${serverUrl}/callback/oauth`;
 
 app.get("/callback/oauth", async (req, res) => {
-  //console.log("/callback/token");
   const { code } = req.query;
 
   try {
+    let cId = clientId;
+    let cSecret = clientSecret;
+    if (req.session.client_id && req.session.client_secret) {
+      cId = req.session.client_id;
+      cSecret = req.session.client_secret;
+    }
+
     const response = await axios({
       method: "POST",
       url: "https://developer.api.autodesk.com/authentication/v1/gettoken",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded"
       },
-      data: `client_id=${clientId}&client_secret=${clientSecret}&grant_type=authorization_code&code=${code}&redirect_uri=${callbackUrl}`
+      data: `client_id=${cId}&client_secret=${cSecret}&grant_type=authorization_code&code=${code}&redirect_uri=${callbackUrl}`
     });
 
     req.session = {
@@ -47,7 +53,6 @@ app.get("/callback/oauth", async (req, res) => {
 });
 
 app.get("/oauth/token", async (req, res) => {
-  //console.log("/oauth/token");
   console.log(req.session);
   if (!req.session?.access_token) {
     res.status(401).end();
@@ -58,12 +63,22 @@ app.get("/oauth/token", async (req, res) => {
 });
 
 app.get("/oauth/url", (req, res) => {
-  //console.log("/oauth/url");
+  let cId = clientId;
+  let cSecret = clientSecret;
+  if (req.query.client_id && req.query.client_secret) {
+    cId = req.query.client_id;
+    cSecret = req.query.client_secret;
+    req.session = {
+      client_id: cId,
+      client_secret: cSecret
+    };
+  } 
+
   const url =
     "https://developer.api.autodesk.com" +
     "/authentication/v1/authorize?response_type=code" +
     "&client_id=" +
-    clientId +
+    cId +
     "&redirect_uri=" +
     callbackUrl +
     "&scope=data:read data:write data:create";
