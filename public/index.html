@@ -52,12 +52,24 @@
         try {
           let url = new URL(window.location.href);
           let accessToken = url.searchParams.get("access_token");
+          let clientId = url.searchParams.get("client_id");
+          let clientSecret = url.searchParams.get("client_secret");
 
           if (!accessToken) {
-            let res = await fetch(`/oauth/token`);
+            let params = "";
+            if (clientId && clientSecret) {
+              params = `?client_id=${clientId}&client_secret=${clientSecret}`;
+            }
+            let res = await fetch(`/oauth/token${params}`);
             if (!res.ok) throw "No access token";
 
             accessToken = await res.text();
+
+            // Get a new token every 30 minutes
+            setInterval(async () => {
+              let res = await fetch(`/oauth/token?refresh=true`);
+              accessToken = await res.text();
+            }, 30 * 60 * 1000);
           }
 
           let defaultQuery = `# Welcome to the Fusion Data GraphiQL Explorer
@@ -127,14 +139,7 @@ query {
             document.getElementById("graphiql")
           );
         } catch {
-          let params = "";
-          let url = new URL(window.location.href);
-          let clientId = url.searchParams.get("client_id");
-          let clientSecret = url.searchParams.get("client_secret");
-          if (clientId && clientSecret) {
-            params = `?client_id=${clientId}&client_secret=${clientSecret}`;
-          }
-          let res = await fetch("/oauth/url" + params);
+          let res = await fetch("/oauth/url");
           url = await res.text();
           location.href = url;
         }
