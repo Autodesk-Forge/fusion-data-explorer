@@ -58,6 +58,36 @@ app.get("/callback/oauth", async (req, res) => {
 app.get("/oauth/token", async (req, res) => {
   console.log("/oauth/token", req.session);
 
+  if (req.query.refresh) {
+    try {
+      let cId = req.session.client_id ? req.session.client_id : clientId;
+      let cSecret = req.session.client_secret ? req.session.client_secret : clientSecret;
+      let rToken = req.session.refresh_token;
+      const response = await axios({
+        method: "POST",
+        url: "https://developer.api.autodesk.com/authentication/v1/refreshtoken",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded"
+        },
+        data: `client_id=${cId}&client_secret=${cSecret}&grant_type=refresh_token&refresh_token=${rToken}`
+      });
+
+      req.session = req.session || {};
+      req.session.access_token = response.data.access_token;
+      req.session.refresh_token = response.data.refresh_token;
+
+      res.end(response.data.access_token);
+      return;
+    } catch (err) {
+      // If refresh failed
+      delete req.session.access_token;
+      delete req.session.refresh_token;
+      
+      res.status(400).end();
+      return;
+    }
+  }
+
   if (req.query.client_id && req.query.client_secret) {
     // If credentials changed
     if (req.query.client_id !== req.session.client_id) {
@@ -77,31 +107,11 @@ app.get("/oauth/token", async (req, res) => {
     }
   }
 
-  if (!req.session?.access_token) {
+  let access_token = req.session?.access_token;
+
+  if (!access_token) {
     res.status(401).end();
     return;
-  }
-
-  let access_token = req.session.access_token;
-
-  if (req.query.refresh) {
-    let cId = req.session.client_id ? req.session.client_id : clientId;
-    let cSecret = req.session.client_secret ? req.session.client_secret : clientSecret;
-    let rToken = req.session.refresh_token;
-    const response = await axios({
-      method: "POST",
-      url: "https://developer.api.autodesk.com/authentication/v1/refreshtoken",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded"
-      },
-      data: `client_id=${cId}&client_secret=${cSecret}&grant_type=refresh_token&refresh_token=${rToken}`
-    });
-
-    req.session = req.session || {};
-    req.session.access_token = response.data.access_token;
-    req.session.refresh_token = response.data.refresh_token;
-
-    access_token = response.data.access_token;
   }
 
   res.end(access_token);

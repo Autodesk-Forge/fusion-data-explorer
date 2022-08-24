@@ -68,7 +68,13 @@
             // Get a new token every 30 minutes
             setInterval(async () => {
               let res = await fetch(`/oauth/token?refresh=true`);
-              accessToken = await res.text();
+              if (res.ok) {
+                accessToken = await res.text();
+              } else {
+                let res = await fetch("/oauth/url");
+                url = await res.text();
+                location.href = url;
+              }
             }, 30 * 60 * 1000);
           }
 
