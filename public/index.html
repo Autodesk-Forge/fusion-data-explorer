@@ -1,13 +1,13 @@
 <html>
   <head>
-    <title>Fusion Data Explorer</title>
+    <title>Data Explorer</title>
     <link
       href="https://unpkg.com/graphiql@1.10.0/graphiql.min.css"
       rel="stylesheet"
     />
   </head>
 
-  <body style="margin: 0">
+  <body style="margin: 0; overflow: hidden">
     <div
       id="warningBanner"
       style="padding: 10px; background: #fffdcd; height: 13px"
@@ -17,6 +17,7 @@
         style="width: 15px; position: absolute; left: 15px"
       />
       <p
+        id="warningMessage"
         style="
           line-height: 100%;
           font-family: sans-serif;
@@ -27,7 +28,7 @@
         "
       >
         Please note that this tool will allow you to <strong>READ</strong> and
-        <strong>WRITE</strong> to your production Fusion Data
+        <strong>WRITE</strong> to your production
       </p>
     </div>
     <div id="graphiql" style="height: calc(100vh - 33px)">
@@ -48,17 +49,33 @@
     ></script>
 
     <script>
+      let apis = {
+        "fusiondata": {
+          name: "Fusion Data",
+          endpoint: "https://developer.api.autodesk.com/manufacturing/graphql/v1"
+        }
+      }
+      let api = null;
+
       window.addEventListener("load", async () => {
         try {
           let url = new URL(window.location.href);
+          api = url.searchParams.get("api");
           let accessToken = url.searchParams.get("access_token");
           let clientId = url.searchParams.get("client_id");
           let clientSecret = url.searchParams.get("client_secret");
 
+          if (!apis[api]) {
+            api = "fusiondata";
+          }
+          document.getElementById("warningMessage").innerHTML += " " + apis[api].name;
+
           if (!accessToken) {
             let params = "";
             if (clientId && clientSecret) {
-              params = `?client_id=${clientId}&client_secret=${clientSecret}`;
+              params = `?client_id=${clientId}&client_secret=${clientSecret}&api=${api}`;
+            } else {
+              params = `?api=${api}`;
             }
             let res = await fetch(`/oauth/token${params}`);
             if (!res.ok) throw "No access token";
@@ -78,7 +95,7 @@
             }, 30 * 60 * 1000);
           }
 
-          let defaultQuery = `# Welcome to the Fusion Data GraphiQL Explorer
+          let defaultQuery = `# Welcome to the GraphiQL Data Explorer
 #
 # GraphiQL is an in-browser tool for writing, validating, and
 # testing GraphQL queries.
@@ -90,7 +107,7 @@
 # GraphQL queries typically start with a "{" character. Lines that start
 # with a # are ignored.
 #
-# An example Fusion Data GraphQL query might look like:
+# An example GraphQL query might look like:
 #
 #     query {
 #       hubs {
@@ -123,7 +140,7 @@ query {
           function graphQLFetcher(graphQLParams, opts) {
             const { headers = {} } = opts;
             return fetch(
-              "https://developer.api.autodesk.com/manufacturing/graphql/v1",
+              apis[api].endpoint,
               {
                 method: "post",
                 headers: {

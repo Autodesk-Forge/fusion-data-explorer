@@ -21,6 +21,7 @@ let serverPort = process.env.PORT || 3000;
 let serverUrl = process.env.BASE_URL || "localhost";
 let callbackUrl =
   process.env.FORGE_CALLBACK_URL || `${serverUrl}/callback/oauth`;
+const apsUrl = "https://developer.api.autodesk.com"; 
 
 app.get("/callback/oauth", async (req, res) => {
   console.log("/callback/oauth", req.session);
@@ -33,7 +34,7 @@ app.get("/callback/oauth", async (req, res) => {
 
     const response = await axios({
       method: "POST",
-      url: "https://developer.api.autodesk.com/authentication/v1/gettoken",
+      url: `${apsUrl}/authentication/v1/gettoken`,
       headers: {
         "Content-Type": "application/x-www-form-urlencoded"
       },
@@ -45,7 +46,7 @@ app.get("/callback/oauth", async (req, res) => {
     req.session.refresh_token = response.data.refresh_token;
 
     if (req.session.client_id && req.session.client_secret) {
-      res.redirect(`/?client_id=${req.session.client_id}&client_secret=${req.session.client_secret}`);
+      res.redirect(`/?client_id=${req.session.client_id}&client_secret=${req.session.client_secret}&api=${req.session.api}`);
     } else {
       res.redirect(`/`);
     }
@@ -65,7 +66,7 @@ app.get("/oauth/token", async (req, res) => {
       let rToken = req.session.refresh_token;
       const response = await axios({
         method: "POST",
-        url: "https://developer.api.autodesk.com/authentication/v1/refreshtoken",
+        url: `${apsUrl}/authentication/v1/refreshtoken`,
         headers: {
           "Content-Type": "application/x-www-form-urlencoded"
         },
@@ -93,10 +94,13 @@ app.get("/oauth/token", async (req, res) => {
     if (req.query.client_id !== req.session.client_id) {
       req.session = {
         client_id: req.query.client_id,
-        client_secret: req.query.client_secret
+        client_secret: req.query.client_secret,
+        api: req.query.api
       };
       res.status(401).end();
       return;
+    } else {
+      req.session.api = req.query.api;
     }
   } else {
     // If credentials changed
@@ -123,7 +127,7 @@ app.get("/oauth/url", (req, res) => {
   let cId = req.session.client_id ? req.session.client_id : clientId;
 
   const url =
-    "https://developer.api.autodesk.com" +
+    apsUrl +
     "/authentication/v1/authorize?response_type=code" +
     "&client_id=" +
     cId +
